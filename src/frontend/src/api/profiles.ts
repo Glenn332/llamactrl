@@ -41,7 +41,7 @@ export const profilesApi = {
   create: (data: Partial<Profile>) => apiPost<BackendProfile>('/profiles', toBackend(data)).then(fromBackend),
   update: (id: number, data: Partial<Profile>) => apiPut<BackendProfile>(`/profiles/${id}`, toBackend(data)).then(fromBackend),
   delete: (id: number) => apiDelete(`/profiles/${id}`),
-  clone: (id: number, newName: string) => apiPost<BackendProfile>(`/profiles/${id}/clone`, { name: newName }).then(fromBackend),
+  clone: (id: number) => apiPost<BackendProfile>(`/profiles/${id}/clone`).then(fromBackend),
   launch: (id: number) => apiPost(`/profiles/${id}/launch`),
 }
 

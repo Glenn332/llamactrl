@@ -12,7 +12,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # Build the React frontend once and share it across all platform builds
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -38,7 +37,6 @@ jobs:
           path: src/LlamaCtrl/wwwroot/
           retention-days: 1
 
-  # Build self-contained binaries for each platform
   build:
     needs: build-frontend
     strategy:
@@ -70,7 +68,6 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      # Place the pre-built frontend into the wwwroot directory
       - uses: actions/download-artifact@v4
         with:
           name: wwwroot
@@ -87,12 +84,10 @@ jobs:
           -p:InformationalVersion=${{ github.ref_name }}
           -o dist/${{ matrix.rid }}
 
-      # Package unix builds as .tar.gz
       - name: Archive (tar)
         if: matrix.archive == 'tar'
         run: tar -czf llamactrl-${{ matrix.rid }}.tar.gz -C dist/${{ matrix.rid }} llamactrl
 
-      # Package windows builds as .zip
       - name: Archive (zip)
         if: matrix.archive == 'zip'
         shell: pwsh
@@ -104,7 +99,6 @@ jobs:
           path: llamactrl-${{ matrix.rid }}.*
           retention-days: 1
 
-  # Create a GitHub Release with all platform archives attached
   release:
     needs: build
     runs-on: ubuntu-latest

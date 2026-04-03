@@ -151,15 +151,19 @@ export function Profiles() {
     return () => document.removeEventListener('keydown', handler)
   }, [showParamPicker])
 
+  const [saveError, setSaveError] = useState<string | null>(null)
+
   const saveMut = useMutation({
     mutationFn: async (data: Partial<Profile>) => {
       if (data.id) return profilesApi.update(data.id, data)
       return profilesApi.create(data)
     },
     onSuccess: (saved) => {
+      setSaveError(null)
       queryClient.invalidateQueries({ queryKey: ['profiles'] })
       setEditingProfile(saved)
     },
+    onError: (e: Error) => setSaveError(e.message),
   })
 
   const deleteMut = useMutation({
@@ -171,7 +175,7 @@ export function Profiles() {
   })
 
   const cloneMut = useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) => profilesApi.clone(id, name),
+    mutationFn: (id: number) => profilesApi.clone(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profiles'] }),
   })
 
@@ -298,7 +302,7 @@ export function Profiles() {
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button onClick={() => launchMut.mutate(p.id)} title="Launch" className="p-1 text-green-600 hover:bg-green-50 rounded"><Play size={14} /></button>
                     <button onClick={() => setEditingProfile({ ...p })} title="Edit" className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Pencil size={14} /></button>
-                    <button onClick={() => cloneMut.mutate({ id: p.id, name: `${p.name} (copy)` })} title="Clone" className="p-1 text-gray-600 hover:bg-gray-100 rounded"><Copy size={14} /></button>
+                    <button onClick={() => cloneMut.mutate(p.id)} title="Clone" className="p-1 text-gray-600 hover:bg-gray-100 rounded"><Copy size={14} /></button>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 truncate mb-2">{p.modelPath.split('/').pop()}</p>
@@ -340,7 +344,7 @@ export function Profiles() {
             {}
             <div>
               <label className="block text-gray-600 mb-1">Name</label>
-              <input value={editingProfile.name ?? ''} onChange={e => setEditingProfile(p => ({ ...p, name: e.target.value }))}
+              <input value={editingProfile.name ?? ''} onChange={e => { setSaveError(null); setEditingProfile(p => ({ ...p, name: e.target.value })) }}
                 className="w-full border rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#4a9eed]" />
             </div>
 
@@ -571,6 +575,8 @@ export function Profiles() {
               />
             </div>
           </div>
+
+          {saveError && <p className="text-xs text-red-600">{saveError}</p>}
 
           <div className="flex gap-2 pt-2">
             <button

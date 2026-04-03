@@ -37,6 +37,9 @@ public class ProfileService : IProfileService
 
     public async Task<ProfileDto> CreateAsync(CreateProfileDto dto)
     {
+        if (await _db.Profiles.AnyAsync(p => p.Name == dto.Name))
+            throw new InvalidOperationException($"A profile named '{dto.Name}' already exists");
+
         var profile = new Profile
         {
             Name = dto.Name,
@@ -54,6 +57,9 @@ public class ProfileService : IProfileService
     {
         var profile = await _db.Profiles.FindAsync(id)
             ?? throw new KeyNotFoundException($"Profile {id} not found");
+
+        if (dto.Name != null && await _db.Profiles.AnyAsync(p => p.Name == dto.Name && p.Id != id))
+            throw new InvalidOperationException($"A profile named '{dto.Name}' already exists");
 
         if (dto.Name != null) profile.Name = dto.Name;
         if (dto.ModelPath != null) profile.ModelPath = dto.ModelPath;
@@ -79,14 +85,20 @@ public class ProfileService : IProfileService
         await _db.SaveChangesAsync();
     }
 
-    public async Task<ProfileDto> CloneAsync(int id, string? newName)
+    public async Task<ProfileDto> CloneAsync(int id)
     {
         var source = await _db.Profiles.FindAsync(id)
             ?? throw new KeyNotFoundException($"Profile {id} not found");
 
+        var baseName = $"{source.Name} (copy)";
+        var name = baseName;
+        var counter = 2;
+        while (await _db.Profiles.AnyAsync(p => p.Name == name))
+            name = $"{baseName} {counter++}";
+
         var clone = new Profile
         {
-            Name = string.IsNullOrWhiteSpace(newName) ? $"{source.Name}-copy" : newName,
+            Name = name,
             ModelPath = source.ModelPath,
             ParametersJson = source.ParametersJson,
             CustomArgsJson = source.CustomArgsJson,

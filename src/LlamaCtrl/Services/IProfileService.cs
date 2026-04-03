@@ -9,6 +9,6 @@ public interface IProfileService
     Task<ProfileDto> CreateAsync(CreateProfileDto dto);
     Task<ProfileDto> UpdateAsync(int id, UpdateProfileDto dto);
     Task DeleteAsync(int id);
-    Task<ProfileDto> CloneAsync(int id, string? newName);
+    Task<ProfileDto> CloneAsync(int id);
     Task<InstanceDto> LaunchAsync(int id);
 }

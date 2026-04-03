@@ -21,6 +21,7 @@ public class ProfilesController : ApiControllerBase
     [HttpPost] public async Task<IActionResult> Create([FromBody] CreateProfileDto dto)
     {
         try { return CreatedResponse(await _svc.CreateAsync(dto)); }
+        catch (InvalidOperationException e) { return ErrorResponse(e.Message); }
         catch (Exception e) { return ErrorResponse(e.Message); }
     }
 
@@ -28,6 +29,7 @@ public class ProfilesController : ApiControllerBase
     {
         try { return OkResponse(await _svc.UpdateAsync(id, dto)); }
         catch (KeyNotFoundException e) { return NotFoundResponse(e.Message); }
+        catch (InvalidOperationException e) { return ErrorResponse(e.Message); }
     }
 
     [HttpDelete("{id}")] public async Task<IActionResult> Delete(int id)
@@ -36,9 +38,9 @@ public class ProfilesController : ApiControllerBase
         catch (KeyNotFoundException e) { return NotFoundResponse(e.Message); }
     }
 
-    [HttpPost("{id}/clone")] public async Task<IActionResult> Clone(int id, [FromBody] CloneProfileDto dto)
+    [HttpPost("{id}/clone")] public async Task<IActionResult> Clone(int id)
     {
-        try { return CreatedResponse(await _svc.CloneAsync(id, dto.Name)); }
+        try { return CreatedResponse(await _svc.CloneAsync(id)); }
         catch (KeyNotFoundException e) { return NotFoundResponse(e.Message); }
     }
 
