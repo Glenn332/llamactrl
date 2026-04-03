@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "dotnet: build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/src/LlamaCtrl/LlamaCtrl.csproj"],
+      "group": "build",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "dotnet: watch",
+      "type": "shell",
+      "command": "dotnet watch --project ${workspaceFolder}/src/LlamaCtrl/LlamaCtrl.csproj -- --no-browser --log-level Debug",
+      "options": { "env": { "ASPNETCORE_ENVIRONMENT": "Development", "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "true" } },
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "devServers" },
+      "problemMatcher": {
+        "owner": "dotnet-watch",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "dotnet watch",
+          "endsPattern": "Application started"
+        }
+      }
+    },
+    {
+      "label": "npm: install",
+      "type": "shell",
+      "command": "npm install",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "presentation": { "reveal": "always", "panel": "dedicated", "group": "devServers" },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": { "regexp": "^$" },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE",
+          "endsPattern": "ready in"
+        }
+      }
+    }
+  ]
+}

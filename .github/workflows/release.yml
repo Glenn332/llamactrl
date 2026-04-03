@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # Build the React frontend once and share it across all platform builds
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build frontend
+        env:
+          VITE_APP_VERSION: ${{ github.ref_name }}
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wwwroot
+          path: src/LlamaCtrl/wwwroot/
+          retention-days: 1
+
+  # Build self-contained binaries for each platform
+  build:
+    needs: build-frontend
+    strategy:
+      matrix:
+        include:
+          - rid: linux-x64
+            os: ubuntu-latest
+            archive: tar
+          - rid: linux-arm64
+            os: ubuntu-latest
+            archive: tar
+          - rid: osx-x64
+            os: ubuntu-latest
+            archive: tar
+          - rid: osx-arm64
+            os: macos-latest
+            archive: tar
+          - rid: win-x64
+            os: windows-latest
+            archive: zip
+          - rid: win-arm64
+            os: windows-latest
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # Place the pre-built frontend into the wwwroot directory
+      - uses: actions/download-artifact@v4
+        with:
+          name: wwwroot
+          path: src/LlamaCtrl/wwwroot/
+
+      - name: Publish
+        run: >
+          dotnet publish src/LlamaCtrl/LlamaCtrl.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:InformationalVersion=${{ github.ref_name }}
+          -o dist/${{ matrix.rid }}
+
+      # Package unix builds as .tar.gz
+      - name: Archive (tar)
+        if: matrix.archive == 'tar'
+        run: tar -czf llamactrl-${{ matrix.rid }}.tar.gz -C dist/${{ matrix.rid }} llamactrl
+
+      # Package windows builds as .zip
+      - name: Archive (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path dist/${{ matrix.rid }}/llamactrl.exe -DestinationPath llamactrl-${{ matrix.rid }}.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: llamactrl-${{ matrix.rid }}
+          path: llamactrl-${{ matrix.rid }}.*
+          retention-days: 1
+
+  # Create a GitHub Release with all platform archives attached
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: llamactrl-*
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            llamactrl-*.tar.gz
+            llamactrl-*.zip

@@ -1,0 +1,59 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Runs the .NET backend with hot reload via dotnet watch.
+      // Use alongside "Frontend (Vite)" and open http://localhost:5173.
+      "name": "Backend (.NET)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["watch", "--project", "${workspaceFolder}/src/LlamaCtrl/LlamaCtrl.csproj"],
+      "args": ["--no-browser", "--log-level", "Debug"],
+      "cwd": "${workspaceFolder}/src/LlamaCtrl",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DOTNET_WATCH_RESTART_ON_RUDE_EDIT": "true"
+      },
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      // Starts the Vite dev server (http://localhost:5173) which proxies
+      // /api and /hubs to the backend on port 3131.
+      "name": "Frontend (Vite)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Local:\\s+(http://localhost:\\d+)",
+        "uriFormat": "%s"
+      }
+    },
+    {
+      // Attaches Chrome to the running Vite dev server for frontend debugging
+      // (breakpoints in .tsx files). Requires "Frontend (Vite)" already running.
+      "name": "Frontend (Chrome debug)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/frontend/src",
+      "sourceMapPathOverrides": {
+        "/@fs/*": "${workspaceFolder}/frontend/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      // Runs both backend and frontend with a single F5.
+      // Opens a browser at http://localhost:5173 automatically.
+      "name": "Full Stack",
+      "configurations": ["Backend (.NET)", "Frontend (Vite)"],
+      "stopAll": true
+    }
+  ]
+}

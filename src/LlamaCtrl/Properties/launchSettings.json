@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "Development": {
+      "commandName": "Project",
+      "commandLineArgs": "--no-browser --log-level Debug",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:3131",
+      "launchBrowser": false
+    }
+  }
+}
