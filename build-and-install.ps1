@@ -9,7 +9,7 @@ Write-Host "==> Building LlamaCtrl for $RID" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "[1/2] Building React frontend..." -ForegroundColor Yellow
-Set-Location "$Root\frontend"
+Set-Location "$Root\src\frontend"
 npm install --silent
 npm run build
 Write-Host "      Done." -ForegroundColor Green

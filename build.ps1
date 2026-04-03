@@ -7,7 +7,7 @@ Write-Host ""
 
 # Step 1: Frontend
 Write-Host "[1/2] Building React frontend..." -ForegroundColor Yellow
-Set-Location "$Root\frontend"
+Set-Location "$Root\src\frontend"
 npm install --silent
 npm run build
 Write-Host "      Frontend built -> src\LlamaCtrl\wwwroot\" -ForegroundColor Green

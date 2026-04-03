@@ -150,7 +150,7 @@ Both can be overridden with `--data-dir` and `--models-dir`.
 
 The backend and frontend run as separate processes in dev. The Vite dev server (port 5173) proxies `/api` and `/hubs` to the backend (port 3131), so open your browser at `http://localhost:5173`, not 3131.
 
-**Requirements:** .NET 10 SDK, Node.js 18+, and `npm install` run once inside `frontend/`.
+**Requirements:** .NET 10 SDK, Node.js 18+, and `npm install` run once inside `src/frontend/`.
 
 ### Terminal workflow
 
@@ -161,7 +161,7 @@ make dev
 
 # Terminal 2 — frontend (HMR)
 make frontend-dev
-# or: cd frontend && npm run dev
+# or: cd src/frontend && npm run dev
 ```
 
 Open **http://localhost:5173**.
@@ -183,7 +183,7 @@ Requires the [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms
 
 1. Open `src/LlamaCtrl/LlamaCtrl.csproj` in Rider.
 2. Select the **Development** run configuration.
-3. In a terminal: `cd frontend && npm install && npm run dev`
+3. In a terminal: `cd src/frontend && npm install && npm run dev`
 4. Open **http://localhost:5173**.
 
 ## Architecture

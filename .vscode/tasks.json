@@ -31,7 +31,7 @@
       "label": "npm: install",
       "type": "shell",
       "command": "npm install",
-      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "options": { "cwd": "${workspaceFolder}/src/frontend" },
       "presentation": { "reveal": "silent" },
       "problemMatcher": []
     },
@@ -39,7 +39,7 @@
       "label": "npm: dev",
       "type": "shell",
       "command": "npm run dev",
-      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "options": { "cwd": "${workspaceFolder}/src/frontend" },
       "isBackground": true,
       "presentation": { "reveal": "always", "panel": "dedicated", "group": "devServers" },
       "problemMatcher": {

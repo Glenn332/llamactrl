@@ -26,7 +26,7 @@
       "request": "launch",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "${workspaceFolder}/src/frontend",
       "console": "integratedTerminal",
       "serverReadyAction": {
         "action": "openExternally",
@@ -41,9 +41,9 @@
       "type": "chrome",
       "request": "launch",
       "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/frontend/src",
+      "webRoot": "${workspaceFolder}/src/frontend/src",
       "sourceMapPathOverrides": {
-        "/@fs/*": "${workspaceFolder}/frontend/*"
+        "/@fs/*": "${workspaceFolder}/src/frontend/*"
       }
     }
   ],

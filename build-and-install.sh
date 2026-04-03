@@ -24,7 +24,7 @@ echo "==> Building LlamaCtrl for $RID"
 echo ""
 
 echo "[1/2] Building React frontend..."
-cd "$ROOT/frontend"
+cd "$ROOT/src/frontend"
 npm install --silent
 npm run build
 echo "      Done."

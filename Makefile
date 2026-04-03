@@ -15,12 +15,12 @@ dev: ## Run frontend dev server + backend in watch mode (requires two terminals)
 	@echo "Starting development servers..."
 	@echo ""
 	@echo "In this terminal: backend (dotnet watch)"
-	@echo "Open another terminal and run: cd frontend && npm run dev"
+	@echo "Open another terminal and run: cd src/frontend && npm run dev"
 	@echo ""
 	cd src/LlamaCtrl && dotnet watch run
 
 frontend-dev: ## Run frontend dev server only
-	cd frontend && npm run dev
+	cd src/frontend && npm run dev
 
 clean: ## Clean build artifacts
 	rm -rf dist/
