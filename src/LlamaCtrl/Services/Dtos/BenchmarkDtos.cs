@@ -13,6 +13,8 @@ public record RunBenchmarkDto(int ProfileId, string? Notes = null, int NPredict 
 {
     public string BenchmarkType { get; set; } = "token-generation";
     public int AgentRounds { get; set; } = 4;
+    public int AgentOutputTokens { get; set; } = 512;
+    public int AgentInputTokens { get; set; } = 512;
 }
 
 public record AgentRoundDto(int Round, int InputTokens, int OutputTokens, double TtftMs, double SpeedTps);

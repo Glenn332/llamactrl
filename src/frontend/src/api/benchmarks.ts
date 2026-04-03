@@ -44,11 +44,13 @@ export const benchmarksApi = {
     signal?: AbortSignal,
     benchmarkType: string = 'token-generation',
     agentRounds?: number,
+    agentInputTokens?: number,
+    agentOutputTokens?: number,
   ): Promise<BenchmarkResult> => {
     const response = await fetch('/api/benchmarks/run-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ profileId, notes, nPredict, benchmarkType, agentRounds }),
+      body: JSON.stringify({ profileId, notes, nPredict, benchmarkType, agentRounds, agentInputTokens, agentOutputTokens }),
       signal,
     })
     if (!response.ok) throw new Error(`Server error: ${response.status}`)

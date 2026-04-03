@@ -836,6 +836,20 @@ public class BenchmarkService : IBenchmarkService
         }
         """;
 
+    private static string BuildInitialPrompt(int targetInputTokens)
+    {
+        var header = "You are a coding assistant. Analyze code and suggest improvements.\n\nUser: Analyze this code and suggest improvements:\n\n```csharp\n";
+        var footer = "\n```\n\nAssistant:";
+        var targetChars = targetInputTokens * 4;
+        var availableChars = Math.Max(targetChars - header.Length - footer.Length, SyntheticCodeBlock.Length);
+        var code = SyntheticCodeBlock;
+        while (code.Length < availableChars)
+            code += "\n\n" + SyntheticCodeBlock;
+        if (code.Length > availableChars)
+            code = code[..availableChars];
+        return header + code + footer;
+    }
+
     private static string BuildSyntheticToolResult(int round) =>
         $"Tool result: The analysis found {round * 3 + 2} issues. Here are the details: " +
         $"The code review for round {round} identified several areas for improvement including " +
@@ -849,7 +863,7 @@ public class BenchmarkService : IBenchmarkService
         RunBenchmarkDto dto, string baseUrl,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
-        var currentPrompt = $"You are a coding assistant. Analyze code and suggest improvements.\n\nUser: Analyze this code and suggest improvements:\n\n```csharp\n{SyntheticCodeBlock}\n```\n\nAssistant:";
+        var currentPrompt = BuildInitialPrompt(dto.AgentInputTokens);
 
         var rounds = new List<AgentRoundDto>();
         var chartPoints = new List<object>();
@@ -868,7 +882,7 @@ public class BenchmarkService : IBenchmarkService
             var payload = new
             {
                 prompt = currentPrompt,
-                n_predict = 512,
+                n_predict = dto.AgentOutputTokens,
                 stream = true,
                 temperature = 0.0,
             };
@@ -883,7 +897,7 @@ public class BenchmarkService : IBenchmarkService
             if (!resp.IsSuccessStatusCode)
             {
                 var errBody = await resp.Content.ReadAsStringAsync(ct);
-                var approxTokens = approxInputTokens + 512;
+                var approxTokens = approxInputTokens + dto.AgentOutputTokens;
                 if ((int)resp.StatusCode == 400)
                     throw new InvalidOperationException(
                         $"Round {round} failed: context window too small for ~{approxTokens} tokens. " +

@@ -65,6 +65,8 @@ export function Benchmarks() {
   const [benchmarkType, setBenchmarkType] = useState<'token-generation' | 'agentic'>('token-generation')
   const [modalStep, setModalStep] = useState<1 | 2>(1)
   const [agentRounds, setAgentRounds] = useState(4)
+  const [agentOutputTokens, setAgentOutputTokens] = useState(512)
+  const [agentInputTokens, setAgentInputTokens] = useState(512)
   const [comparing, setComparing] = useState<BenchmarkResult[] | null>(null)
   const [viewingResult, setViewingResult] = useState<BenchmarkResult | null>(null)
 
@@ -158,6 +160,8 @@ export function Benchmarks() {
         abort.signal,
         benchmarkType,
         benchmarkType === 'agentic' ? agentRounds : undefined,
+        benchmarkType === 'agentic' ? agentInputTokens : undefined,
+        benchmarkType === 'agentic' ? agentOutputTokens : undefined,
       )
     } catch (e: unknown) {
       if ((e as Error).name !== 'AbortError') {
@@ -334,7 +338,7 @@ export function Benchmarks() {
       {}
       {showRunModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-[440px] space-y-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-[480px] space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-lg">
                 {modalStep === 1 ? 'Choose Benchmark Type' : 'Configure Benchmark'}
@@ -391,18 +395,44 @@ export function Benchmarks() {
                     </div>
                   </div>
                 ) : (
-                  <div>
-                    <label className="block text-sm text-gray-600 mb-1">
-                      Agent Rounds <span className="font-semibold text-gray-800">{agentRounds}</span>
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input type="range" min={2} max={10} step={1} value={agentRounds}
-                        onChange={e => setAgentRounds(Number(e.target.value))} className="flex-1" />
-                      <input type="number" min={2} max={10} step={1} value={agentRounds}
-                        onChange={e => setAgentRounds(Math.max(2, Math.min(10, Number(e.target.value))))}
-                        className="w-20 border rounded px-2 py-1 text-center text-sm" />
+                  <>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Agent Rounds <span className="font-semibold text-gray-800">{agentRounds}</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input type="range" min={2} max={10} step={1} value={agentRounds}
+                          onChange={e => setAgentRounds(Number(e.target.value))} className="flex-1" />
+                        <input type="number" min={2} max={10} step={1} value={agentRounds}
+                          onChange={e => setAgentRounds(Math.max(2, Math.min(10, Number(e.target.value))))}
+                          className="w-20 border rounded px-2 py-1 text-center text-sm" />
+                      </div>
                     </div>
-                  </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Output tokens per round <span className="font-semibold text-gray-800">{agentOutputTokens}</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input type="range" min={64} max={2048} step={64} value={agentOutputTokens}
+                          onChange={e => setAgentOutputTokens(Number(e.target.value))} className="flex-1" />
+                        <input type="number" min={64} max={2048} step={64} value={agentOutputTokens}
+                          onChange={e => setAgentOutputTokens(Math.max(64, Math.min(2048, Number(e.target.value))))}
+                          className="w-20 border rounded px-2 py-1 text-center text-sm" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">
+                        Input tokens (approx.) <span className="font-semibold text-gray-800">{agentInputTokens}</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input type="range" min={256} max={4096} step={256} value={agentInputTokens}
+                          onChange={e => setAgentInputTokens(Number(e.target.value))} className="flex-1" />
+                        <input type="number" min={256} max={4096} step={256} value={agentInputTokens}
+                          onChange={e => setAgentInputTokens(Math.max(256, Math.min(4096, Number(e.target.value))))}
+                          className="w-20 border rounded px-2 py-1 text-center text-sm" />
+                      </div>
+                    </div>
+                  </>
                 )}
                 <div className="flex gap-2 justify-between">
                   <button onClick={() => setModalStep(1)} className="flex items-center gap-1 px-4 py-2 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">
@@ -437,7 +467,7 @@ export function Benchmarks() {
                   {run.phase === 'done' ? 'Benchmark complete' : run.phase === 'error' ? 'Benchmark failed' : 'Benchmark running'}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  {profileName}{benchmarkType === 'agentic' ? ` · ${agentRounds} rounds` : ` · ${run.nPredict} tokens`}
+                  {profileName}{benchmarkType === 'agentic' ? ` · ${agentRounds} rounds · ~${agentInputTokens}in / ${agentOutputTokens}out` : ` · ${run.nPredict} tokens`}
                 </p>
               </div>
               <span className="text-xl font-mono font-bold text-gray-700 shrink-0">{fmtElapsed(run.elapsed)}</span>
