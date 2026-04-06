@@ -279,7 +279,7 @@ export function Profiles() {
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-800">Profiles</h2>
           <div className="flex gap-2">
-            <button onClick={() => setEditingProfile({ ...defaultProfile })} className="flex items-center gap-1 px-3 py-1.5 bg-[#4a9eed] text-white rounded text-sm hover:bg-[#3a8edd]">
+            <button onClick={() => setEditingProfile({ ...defaultProfile, selectedBinaryId: binaries?.find(b => b.isDefault)?.id ?? binaries?.[0]?.id ?? null })} className="flex items-center gap-1 px-3 py-1.5 bg-[#4a9eed] text-white rounded text-sm hover:bg-[#3a8edd]">
               <Plus size={14} /> New Profile
             </button>
             <button onClick={handleImport} className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300">

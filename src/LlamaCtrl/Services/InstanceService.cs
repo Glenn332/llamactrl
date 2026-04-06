@@ -130,19 +130,27 @@ public class InstanceService : IInstanceService
                 return binary.Path;
         }
 
+        var defaultBinary = await _db.LlamaServerBinaries
+            .Where(b => b.IsDefault)
+            .FirstOrDefaultAsync()
+            ?? await _db.LlamaServerBinaries.FirstOrDefaultAsync();
+
+        if (defaultBinary != null)
+            return defaultBinary.Path;
+
         return await _settings.GetLegacyBinaryPathAsync();
     }
 
-    private static InstanceDto MapToDto(Instance i)
+    private InstanceDto MapToDto(Instance i)
     {
-        string? uptime = null;
-        if (i.Status == InstanceStatus.Running)
+        MetricsDto? metrics = null;
+        if (i.Status == InstanceStatus.Running || i.Status == InstanceStatus.Starting)
         {
-            var elapsed = DateTime.UtcNow - i.UpdatedAt;
-            uptime = $"{(int)elapsed.TotalHours}h {elapsed.Minutes}m";
+            var snapshot = _metricsCollector.GetMetrics(i.Id);
+            metrics = new MetricsDto(snapshot.TokensPerSec, snapshot.AvgLatencyMs, snapshot.TotalRequests, snapshot.VramUsedMb);
         }
         return new InstanceDto(i.Id, i.Name, i.ProfileId, i.Profile?.Name ?? "",
             i.Port, i.Pid, i.Status.ToString(), i.CreatedAt, i.UpdatedAt,
-            null, uptime);
+            metrics);
     }
 }

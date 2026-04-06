@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using LlamaCtrl.Data;
+using LlamaCtrl.Domain.Enums;
 using LlamaCtrl.Hubs;
 using LlamaCtrl.Infrastructure;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
@@ -61,6 +63,33 @@ static class MiddlewarePipeline
             processManager.StopAllAsync().GetAwaiter().GetResult();
             Log.CloseAndFlush();
         });
+
+        var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+        var metricsHub = app.Services.GetRequiredService<IHubContext<MetricsHub>>();
+        processManager.OnInstanceReady += instanceId =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = scopeFactory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    var instance = await db.Instances.FindAsync(instanceId);
+                    if (instance is { Status: InstanceStatus.Starting })
+                    {
+                        instance.Status = InstanceStatus.Running;
+                        instance.UpdatedAt = DateTime.UtcNow;
+                        await db.SaveChangesAsync();
+                        await metricsHub.Clients.Group("metrics")
+                            .SendAsync("InstanceStatusChanged", instanceId, "Running");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Failed to mark instance {Id} as running", instanceId);
+                }
+            });
+        };
 
         var shouldOpenBrowser = !options.NoBrowser;
         if (shouldOpenBrowser)

@@ -21,18 +21,25 @@ public class MetricsCollector
     {
         var snapshot = _snapshots.GetOrAdd(instanceId, _ => new MetricsSnapshot());
 
-        var evalMatch = Regex.Match(line, @"eval time\s*=\s*[\d.]+ ms\s*/\s*\d+\s*tokens.*?([\d.]+)\s*tokens per second");
-        if (evalMatch.Success && double.TryParse(evalMatch.Groups[1].Value, out var tps))
+        var genMatch = Regex.Match(line, @"generation eval time\s*=\s*[\d.]+ ms\s*/\s*(\d+)\s*.*?([\d.]+)\s*tokens per second");
+        if (!genMatch.Success)
+            genMatch = Regex.Match(line, @"(?<!prompt )eval time\s*=\s*[\d.]+ ms\s*/\s*(\d+)\s*.*?([\d.]+)\s*tokens per second");
+        if (genMatch.Success && double.TryParse(genMatch.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture, out var tps))
         {
             snapshot.TokensPerSec = tps;
-            snapshot.LastUpdated = DateTime.UtcNow;
         }
 
-        var latMatch = Regex.Match(line, @"prompt eval time\s*=\s*([\d.]+)\s*ms");
-        if (latMatch.Success && double.TryParse(latMatch.Groups[1].Value, out var lat))
+        var ttftMatch = Regex.Match(line, @"prompt eval time\s*=\s*([\d.]+)\s*ms\s*/\s*(\d+)\s*tokens");
+        if (ttftMatch.Success
+            && double.TryParse(ttftMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var totalMs)
+            && int.TryParse(ttftMatch.Groups[2].Value, out var tokenCount)
+            && tokenCount > 0)
         {
-            snapshot.AvgLatencyMs = lat;
+            snapshot.AvgLatencyMs = totalMs / tokenCount;
         }
+
+        if (line.Contains("POST /completion") || line.Contains("POST /v1/chat") || line.Contains("POST /v1/completions"))
+            IncrementRequests(instanceId);
 
         snapshot.LastUpdated = DateTime.UtcNow;
     }

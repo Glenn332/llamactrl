@@ -7,6 +7,40 @@ namespace LlamaCtrl.Infrastructure.SystemInfo;
 
 public class SystemInfoService
 {
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MemoryStatusEx
+    {
+        public uint Length;
+        public uint MemoryLoad;
+        public ulong TotalPhys;
+        public ulong AvailPhys;
+        public ulong TotalPageFile;
+        public ulong AvailPageFile;
+        public ulong TotalVirtual;
+        public ulong AvailVirtual;
+        public ulong AvailExtendedVirtual;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx lpBuffer);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileTime
+    {
+        public uint LowDateTime;
+        public uint HighDateTime;
+        public readonly long ToLong() => ((long)HighDateTime << 32) | LowDateTime;
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetSystemTimes(out FileTime idleTime, out FileTime kernelTime, out FileTime userTime);
+
+    private long _prevIdleTime;
+    private long _prevKernelTime;
+    private long _prevUserTime;
+
     private sealed record Snapshot(double Cpu, double RamUsed, double RamTotal);
     private volatile Snapshot? _latest;
 
@@ -34,12 +68,14 @@ public class SystemInfoService
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 return GetGpusMac();
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return GetGpusNvidiaSmi();
         }
         catch { }
         return [];
     }
 
-    private static async Task<(double cpu, double ramUsed, double ramTotal)> GetCpuAndRamAsync()
+    private async Task<(double cpu, double ramUsed, double ramTotal)> GetCpuAndRamAsync()
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return await GetCpuAndRamMacAsync();
@@ -118,20 +154,36 @@ public class SystemInfoService
         return (cpu, totalGb - freeGb, totalGb);
     }
 
-    private static (double cpu, double ramUsed, double ramTotal) GetCpuAndRamWindows()
+    private (double cpu, double ramUsed, double ramTotal) GetCpuAndRamWindows()
     {
-        var cpuOut = Run("wmic", "cpu get LoadPercentage /value");
-        var cpuMatch = Regex.Match(cpuOut, @"LoadPercentage=(\d+)");
-        double cpu = cpuMatch.Success ? double.Parse(cpuMatch.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
+        double cpu = 0;
+        if (GetSystemTimes(out var idle, out var kernel, out var user))
+        {
+            var idleTime = idle.ToLong();
+            var kernelTime = kernel.ToLong();
+            var userTime = user.ToLong();
 
-        var memOut = Run("wmic", "OS get FreePhysicalMemory,TotalVisibleMemorySize /value");
-        double total = 0, free = 0;
-        var t = Regex.Match(memOut, @"TotalVisibleMemorySize=(\d+)");
-        var f = Regex.Match(memOut, @"FreePhysicalMemory=(\d+)");
-        if (t.Success) total = double.Parse(t.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) / 1024 / 1024;
-        if (f.Success) free  = double.Parse(f.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) / 1024 / 1024;
+            var idleDelta = idleTime - _prevIdleTime;
+            var totalDelta = (kernelTime - _prevKernelTime) + (userTime - _prevUserTime);
 
-        return (cpu, total - free, total);
+            if (_prevKernelTime != 0 && totalDelta > 0)
+                cpu = Math.Round((1.0 - (double)idleDelta / totalDelta) * 100, 1);
+
+            _prevIdleTime = idleTime;
+            _prevKernelTime = kernelTime;
+            _prevUserTime = userTime;
+        }
+
+        double totalGb = 0, usedGb = 0;
+        var memStatus = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };
+        if (GlobalMemoryStatusEx(ref memStatus))
+        {
+            totalGb = memStatus.TotalPhys / 1024.0 / 1024.0 / 1024.0;
+            var availGb = memStatus.AvailPhys / 1024.0 / 1024.0 / 1024.0;
+            usedGb = totalGb - availGb;
+        }
+
+        return (cpu, usedGb, totalGb);
     }
 
     private static List<GpuInfoDto> GetGpusMac()
@@ -157,6 +209,22 @@ public class SystemInfoService
                 }
             }
             results.Add(new GpuInfoDto(name, vramGb, 0));
+        }
+        return results;
+    }
+
+    private static List<GpuInfoDto> GetGpusNvidiaSmi()
+    {
+        var output = Run("nvidia-smi", "--query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits", timeoutMs: 5000);
+        var results = new List<GpuInfoDto>();
+        foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var parts = line.Split(',', StringSplitOptions.TrimEntries);
+            if (parts.Length < 3) continue;
+            var name = parts[0];
+            double totalGb = double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var t) ? t / 1024 : 0;
+            double usedGb = double.TryParse(parts[2], System.Globalization.CultureInfo.InvariantCulture, out var u) ? u / 1024 : 0;
+            results.Add(new GpuInfoDto(name, totalGb, usedGb));
         }
         return results;
     }

@@ -44,10 +44,7 @@ export function Layout() {
           <div className="bg-green-900 border border-green-500 rounded px-2 py-1 text-green-300">
             RAM {status ? `${status.ramUsedGb.toFixed(1)} / ${status.ramTotalGb.toFixed(0)} GB` : '--'}
           </div>
-          <div className="bg-purple-900 border border-purple-500 rounded px-2 py-1 text-purple-300">
-            VRAM {status ? `${status.vramUsedGb.toFixed(1)} / ${status.vramTotalGb.toFixed(0)} GB` : '--'}
-          </div>
-          <div className="bg-orange-900 border border-orange-500 rounded px-2 py-1 text-orange-300">
+<div className="bg-orange-900 border border-orange-500 rounded px-2 py-1 text-orange-300">
             Active: {status?.activeInstances ?? 0} instances
           </div>
         </div>

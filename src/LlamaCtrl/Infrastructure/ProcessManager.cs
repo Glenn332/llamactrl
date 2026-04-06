@@ -11,9 +11,12 @@ namespace LlamaCtrl.Infrastructure;
 public class ProcessManager
 {
     private readonly ConcurrentDictionary<int, ManagedProcess> _processes = new();
+    private readonly ConcurrentDictionary<int, bool> _readyFired = new();
     private readonly ILogger<ProcessManager> _logger;
     private IHubContext<LogHub>? _logHub;
     private readonly MetricsCollector _metricsCollector;
+
+    public event Action<int>? OnInstanceReady;
 
     public ProcessManager(ILogger<ProcessManager> logger, MetricsCollector metricsCollector)
     {
@@ -85,6 +88,10 @@ public class ProcessManager
             CreateNoWindow = true
         };
 
+        var binaryDir = Path.GetDirectoryName(Path.GetFullPath(binary));
+        if (!string.IsNullOrEmpty(binaryDir))
+            psi.WorkingDirectory = binaryDir;
+
         var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var managed = new ManagedProcess { InstanceId = instanceId, Process = process };
 
@@ -93,8 +100,7 @@ public class ProcessManager
             if (e.Data == null) return;
             managed.AddLine(e.Data);
             _metricsCollector.UpdateFromLogLine(instanceId, e.Data);
-            if (e.Data.Contains("POST /completion") || e.Data.Contains("POST /v1/chat"))
-                _metricsCollector.IncrementRequests(instanceId);
+            CheckReady(instanceId, e.Data);
             _ = BroadcastLogAsync(instanceId, e.Data);
         };
         process.ErrorDataReceived += (_, e) =>
@@ -102,6 +108,7 @@ public class ProcessManager
             if (e.Data == null) return;
             managed.AddLine(e.Data);
             _metricsCollector.UpdateFromLogLine(instanceId, e.Data);
+            CheckReady(instanceId, e.Data);
             _ = BroadcastLogAsync(instanceId, e.Data);
         };
 
@@ -135,6 +142,7 @@ public class ProcessManager
         {
             managed.Process.Dispose();
             _metricsCollector.RemoveInstance(instanceId);
+            _readyFired.TryRemove(instanceId, out _);
         }
         return Task.CompletedTask;
     }
@@ -153,6 +161,12 @@ public class ProcessManager
         var ids = _processes.Keys.ToList();
         foreach (var id in ids)
             await StopProcessAsync(id);
+    }
+
+    private void CheckReady(int instanceId, string line)
+    {
+        if (line.Contains("all slots are idle") && _readyFired.TryAdd(instanceId, true))
+            OnInstanceReady?.Invoke(instanceId);
     }
 
     private async Task BroadcastLogAsync(int instanceId, string line)

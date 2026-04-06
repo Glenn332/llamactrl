@@ -29,34 +29,39 @@ public class HealthPoller : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromSeconds(
+        var normalInterval = TimeSpan.FromSeconds(
             _config.GetValue<int>("LlamaCtrl:HealthPollIntervalSeconds", 15));
+        var startingInterval = TimeSpan.FromSeconds(2);
+
+        await Task.Delay(startingInterval, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await Task.Delay(interval, stoppingToken);
-                await PollAllAsync();
+                var hasStarting = await PollAllAsync();
+                var delay = hasStarting ? startingInterval : normalInterval;
+                await Task.Delay(delay, stoppingToken);
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "HealthPoller encountered an error; will retry next interval");
+                await Task.Delay(normalInterval, stoppingToken);
             }
         }
     }
 
-    private async Task PollAllAsync()
+    private async Task<bool> PollAllAsync()
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var runningInstances = await db.Instances
+        var instances = await db.Instances
             .Where(i => i.Status == InstanceStatus.Running || i.Status == InstanceStatus.Starting)
             .ToListAsync();
 
-        foreach (var instance in runningInstances)
+        foreach (var instance in instances)
         {
             try
             {
@@ -83,6 +88,8 @@ public class HealthPoller : BackgroundService
                 await HandleFailureAsync(db, instance);
             }
         }
+
+        return instances.Any(i => i.Status == InstanceStatus.Starting);
     }
 
     private async Task HandleFailureAsync(AppDbContext db, Domain.Entities.Instance instance)

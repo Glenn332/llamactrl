@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { instancesApi } from '../api/instances'
 import { profilesApi } from '../api/profiles'
@@ -6,6 +6,18 @@ import { StatusBadge } from '../components/StatusBadge'
 import { useMetricsHub, useLogHub } from '../hooks/useSignalR'
 import type { Instance } from '../api/types'
 import { Play, Square, Pencil, ScrollText, Plus, RefreshCw, StopCircle, Loader2, X, ExternalLink } from 'lucide-react'
+
+function formatUptime(updatedAt: string): string {
+  const utcString = updatedAt.endsWith('Z') ? updatedAt : updatedAt + 'Z'
+  const elapsed = Math.floor((Date.now() - new Date(utcString).getTime()) / 1000)
+  if (elapsed < 0) return '0s'
+  const h = Math.floor(elapsed / 3600)
+  const m = Math.floor((elapsed % 3600) / 60)
+  const s = elapsed % 60
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
 
 export function Instances() {
   const queryClient = useQueryClient()
@@ -17,13 +29,22 @@ export function Instances() {
   const [editingInstance, setEditingInstance] = useState<Instance | null>(null)
   const [editForm, setEditForm] = useState({ name: '', port: 0 })
   const logsEndRef = useRef<HTMLDivElement>(null)
+  const [, setTick] = useState(0)
   const { logs: liveLogs, clearLogs } = useLogHub(logsInstanceId)
   const allLogs = [...initialLogs, ...liveLogs]
 
   const { data: instances, isLoading, error } = useQuery({
     queryKey: ['instances'],
     queryFn: instancesApi.getAll,
+    refetchInterval: selectedId ? 5000 : false,
   })
+
+  const hasRunning = instances?.some(i => i.status === 'Running' || i.status === 'Starting')
+  useEffect(() => {
+    if (!hasRunning) return
+    const id = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [hasRunning])
 
   const { data: profiles } = useQuery({
     queryKey: ['profiles'],
@@ -218,19 +239,19 @@ export function Instances() {
             </div>
             <div>
               <span className="text-gray-500">Uptime</span>
-              <p className="font-mono">{selected.uptime ?? '--'}</p>
+              <p className="font-mono">{selected.status === 'Running' ? formatUptime(selected.updatedAt) : '--'}</p>
             </div>
             <div>
               <span className="text-gray-500">Tokens/sec</span>
-              <p className="font-mono">{selected.metrics?.tokensPerSec.toFixed(1) ?? '--'}</p>
+              <p className="font-mono">{selected.metrics && selected.metrics.tokensPerSec > 0 ? selected.metrics.tokensPerSec.toFixed(1) : '--'}</p>
             </div>
             <div>
               <span className="text-gray-500">Avg Latency</span>
-              <p className="font-mono">{selected.metrics?.avgLatencyMs ? `${selected.metrics.avgLatencyMs.toFixed(0)}ms` : '--'}</p>
+              <p className="font-mono">{selected.metrics && selected.metrics.avgLatencyMs > 0 ? `${selected.metrics.avgLatencyMs.toFixed(0)}ms` : '--'}</p>
             </div>
             <div>
               <span className="text-gray-500">Total Requests</span>
-              <p className="font-mono">{selected.metrics?.totalRequests ?? '--'}</p>
+              <p className="font-mono">{selected.metrics ? selected.metrics.totalRequests : '--'}</p>
             </div>
             <div>
               <span className="text-gray-500">Profile</span>
