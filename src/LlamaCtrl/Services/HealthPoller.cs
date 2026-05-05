@@ -94,6 +94,12 @@ public class HealthPoller : BackgroundService
 
     private async Task HandleFailureAsync(AppDbContext db, Domain.Entities.Instance instance)
     {
+        if (instance.Status == InstanceStatus.Starting)
+        {
+            _failureCounts[instance.Id] = 0;
+            return;
+        }
+
         _failureCounts.TryGetValue(instance.Id, out var count);
         _failureCounts[instance.Id] = ++count;
 
